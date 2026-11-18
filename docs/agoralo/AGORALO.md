@@ -9,9 +9,9 @@ Everything Agoralo-specific is layered on top of HumHub so upstream updates stay
 | | |
 |---|---|
 | Production | https://agoralo.com (Hetzner, Debian 12, IP `2.28.57.50`) |
-| Stack | Nginx · PHP-FPM · MariaDB · Composer · Let's Encrypt — no Docker |
+| Stack | Nginx · PHP-FPM 8.4 · MariaDB · Composer · Let's Encrypt — no Docker |
 | Web root | `/var/www/agoralo` (git working copy of branch `main`) |
-| Server user | `deploy` (code owner); `www-data` runs PHP |
+| Server users | personal admin account (sudo, SSH key); a dedicated **deploy user** (name deliberately not published here — no password, no sudo, key-only) owns the code; `www-data` runs PHP |
 | DB | `agoralo` / user `agoralo_user` — credentials live only on the server |
 | Cron | `/etc/cron.d/agoralo-humhub` → `yii cron/run`, `yii queue/run` every minute |
 
@@ -63,11 +63,13 @@ push to main ──► GitHub Actions "Agoralo deploy"
 ```
 
 - Workflow: `.github/workflows/agoralo-deploy.yml`; server script: `deploy/remote-deploy.sh`.
-- One-time server preparation: `deploy/server-setup-ci.sh` (ownership, sudoers rule, CI key).
-  If `deploy/remote-deploy.sh` changes, re-run `install -m 0755 /var/www/agoralo/deploy/remote-deploy.sh ~/agoralo-ci/`
-  on the server (the CI key is bound to the installed copy, not the repo copy).
-- Server logs: `~/agoralo-ci/logs/` on the server; Actions logs on GitHub.
-- Manual deploy on the server: `~/agoralo-ci/remote-deploy.sh`.
+- One-time server preparation: `deploy/server-setup-ci.sh`, run from the admin account
+  (creates the deploy user, SSH AllowUsers entry, ownership, sudoers rule, CI key).
+- The CI key is bound to a root-owned copy of the script. If `deploy/remote-deploy.sh` changes,
+  refresh it after that deploy (from the admin account):
+  `sudo install -m 0755 -o root -g root /var/www/agoralo/deploy/remote-deploy.sh ~<deploy-user>/agoralo-ci/`
+- Server logs: `~<deploy-user>/agoralo-ci/logs/`; Actions logs on GitHub.
+- Manual deploy: `sudo -u <deploy-user> -H ~<deploy-user>/agoralo-ci/remote-deploy.sh`.
 
 ### Rollback
 

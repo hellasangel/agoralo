@@ -1,13 +1,15 @@
 #!/usr/bin/env bash
 #
-# Agoralo — production deploy step (runs ON the server as user `deploy`).
+# Agoralo — production deploy step (runs ON the server).
 #
-# Installed by deploy/server-setup-ci.sh to /home/deploy/agoralo-ci/remote-deploy.sh
-# and bound to the GitHub Actions SSH key as a *forced command*: that key can run
+# Runs as the dedicated deploy user (its name is kept out of this public repo).
+# Installed by deploy/server-setup-ci.sh to ~<deploy-user>/agoralo-ci/remote-deploy.sh
+# (root-owned) and bound to the GitHub Actions SSH key as a *forced command*: that key can run
 # nothing except this script. GitHub sends the commit SHA as the SSH command, which
 # arrives here in $SSH_ORIGINAL_COMMAND.
 #
-# Can also be run by hand:   ~/agoralo-ci/remote-deploy.sh
+# Can also be run by hand from the admin account:
+#   sudo -u <deploy-user> -H ~<deploy-user>/agoralo-ci/remote-deploy.sh
 #
 # Steps: fast-forward pull of `main` -> composer install (only if lock changed)
 #        -> DB migrations (core + modules) -> cache flush -> local smoke test.
@@ -17,7 +19,7 @@ set -Eeuo pipefail
 
 APP=/var/www/agoralo
 BRANCH=main
-PHP=/usr/bin/php                       # must match the sudoers rule
+PHP=$(command -v php)                  # same path the sudoers rule was written with
 YII="$APP/protected/yii"
 LOG_DIR="$HOME/agoralo-ci/logs"
 mkdir -p "$LOG_DIR"

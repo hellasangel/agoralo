@@ -4,7 +4,7 @@
 # all printed once by deploy/server-setup-ci.sh:
 #   DEPLOY_HOST         server IP (2.28.57.50)
 #   DEPLOY_PORT         SSH port (usually 22)
-#   DEPLOY_USER         deploy
+#   DEPLOY_USER         name of the dedicated deploy user (kept out of the repo on purpose)
 #   DEPLOY_SSH_KEY      private key of the dedicated CI key (forced-command, deploy only)
 #   DEPLOY_KNOWN_HOSTS  the server's host-key line, so the host is verified (no TOFU)
 #
