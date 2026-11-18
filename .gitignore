@@ -31,6 +31,7 @@ nbproject
 
 themes/*
 !themes/HumHub
+!themes/Agoralo
 
 favicon.ico
 /.settings

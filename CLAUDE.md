@@ -1,3 +1,13 @@
+# Agoralo
+
+This repository is **Agoralo** — a community platform built on a fork of HumHub.
+**Read `docs/agoralo/AGORALO.md` first** (@docs/agoralo/AGORALO.md). Where it conflicts with the
+upstream HumHub guidance below, the Agoralo guide wins — in particular: production deploys from
+`main` on every push, customizations go into `protected/modules/agoralo-*` and `themes/Agoralo`,
+and HumHub core is only patched when unavoidable (logged in `docs/agoralo/CORE-PATCHES.md`).
+
+---
+
 # HumHub Core — Claude Guide
 
 ## Project Overview

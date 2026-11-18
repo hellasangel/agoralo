@@ -1,0 +1,83 @@
+# Agoralo — auto-deploy to production on every push to `main`.
+#
+# Required repository secrets (Settings → Secrets and variables → Actions),
+# all printed once by deploy/server-setup-ci.sh:
+#   DEPLOY_HOST         server IP (2.28.57.50)
+#   DEPLOY_PORT         SSH port (usually 22)
+#   DEPLOY_USER         deploy
+#   DEPLOY_SSH_KEY      private key of the dedicated CI key (forced-command, deploy only)
+#   DEPLOY_KNOWN_HOSTS  the server's host-key line, so the host is verified (no TOFU)
+#
+# The key is bound on the server to ~/agoralo-ci/remote-deploy.sh, so the only
+# thing this workflow can make the server do is "deploy what is on GitHub main".
+
+name: Agoralo deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: agoralo-production
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    if: github.repository == 'hellasangel/agoralo'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 50
+
+      - name: Lint changed PHP files
+        env:
+          BEFORE: ${{ github.event.before }}
+        run: |
+          base="$BEFORE"
+          if [ -z "$base" ] || [ "$base" = "0000000000000000000000000000000000000000" ] || ! git cat-file -e "$base" 2>/dev/null; then
+            base=HEAD~1
+          fi
+          files=$(git diff --name-only --diff-filter=AM "$base" HEAD -- '*.php' || true)
+          if [ -z "$files" ]; then echo "No PHP changes"; exit 0; fi
+          echo "$files" | xargs -r -n1 php -l
+
+      - name: Configure SSH
+        env:
+          SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/agoralo_deploy
+          chmod 600 ~/.ssh/agoralo_deploy
+          printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
+
+      - name: Deploy on server
+        env:
+          HOST: ${{ secrets.DEPLOY_HOST }}
+          PORT: ${{ secrets.DEPLOY_PORT }}
+          DUSER: ${{ secrets.DEPLOY_USER }}
+        run: |
+          if [ -z "$HOST" ]; then
+            echo "::warning::Deploy secrets are not configured yet (run deploy/server-setup-ci.sh) — skipping deploy."
+            exit 0
+          fi
+          ssh -i ~/.ssh/agoralo_deploy -p "${PORT:-22}" \
+              -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o BatchMode=yes \
+              "$DUSER@$HOST" "$GITHUB_SHA"
+
+      - name: Public smoke test
+        run: |
+          code=$(curl -s -o /dev/null -w '%{http_code}' -L https://agoralo.com/)
+          echo "https://agoralo.com/ -> HTTP $code"
+          test "$code" = "200"
+
+      - name: Clean up key
+        if: always()
+        run: rm -f ~/.ssh/agoralo_deploy
