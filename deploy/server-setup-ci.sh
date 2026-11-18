@@ -93,7 +93,7 @@ else
   ok "created"
 fi
 sudo usermod -aG www-data "$DU"
-id -nG "$DU" | grep -qw sudo && warn "'$DU' is in the sudo group — it should not be. Remove with: sudo deluser $DU sudo"
+grep -qw sudo <<<"$(id -nG "$DU")" && warn "'$DU' is in the sudo group — it should not be. Remove with: sudo deluser $DU sudo"
 DH=$(getent passwd "$DU" | cut -d: -f6)
 ok "home: $DH, groups: $(id -nG "$DU")"
 
@@ -114,7 +114,8 @@ EOF
   sudo cp -a "$F" "$BAK"
   sudo sed -i -E "s/^([[:space:]]*AllowUsers[[:space:]].*[^[:space:]])[[:space:]]*$/\1 $DU/I" "$F"
   if ! sudo sshd -t; then sudo cp -a "$BAK" "$F"; die "sshd -t failed — original config restored, nothing reloaded."; fi
-  sudo sshd -T | awk '$1=="allowusers"{print $2}' | grep -qxF "$ADMIN" || { sudo cp -a "$BAK" "$F"; die "Safety check: '$ADMIN' would lose access — restored."; }
+  NEWALLOW=$(sudo sshd -T | awk '$1=="allowusers"{print $2}')
+  grep -qxF "$ADMIN" <<<"$NEWALLOW" || { sudo cp -a "$BAK" "$F"; die "Safety check: '$ADMIN' would lose access — restored."; }
   sudo systemctl reload ssh
   ok "AllowUsers now: $(sudo sshd -T | awk '$1=="allowusers"{print $2}' | xargs)  (backup: $BAK)"
   warn "Keep this session open. In a NEW terminal check you can still log in as $ADMIN."
@@ -202,7 +203,7 @@ fi
 # ===========================================================================
 step "10. GitHub secrets → github.com/hellasangel/agoralo/settings/secrets/actions"
 HOSTKEY=$(cut -d' ' -f1,2 /etc/ssh/ssh_host_ed25519_key.pub)
-PORT=$(sudo sshd -T | awk '$1=="port"{print $2; exit}')
+PORT=$(sudo sshd -T | awk '$1=="port"{p=$2} END{print p}')   # no early exit: avoids SIGPIPE under pipefail
 if [[ "$PORT" == 22 ]]; then KH="$PUBLIC_IP $HOSTKEY"; else KH="[$PUBLIC_IP]:$PORT $HOSTKEY"; fi
 {
   echo "    DEPLOY_HOST         = $PUBLIC_IP"
