@@ -4,6 +4,8 @@ Agoralo is a modular community platform built on **HumHub** (Yii2, PHP 8.2+).
 This repository is a fork of `humhub/humhub` (currently based on **1.18.3**).
 Everything Agoralo-specific is layered on top of HumHub so upstream updates stay easy.
 
+Product scope and functional design: [`DESIGN-SPEC.md`](DESIGN-SPEC.md).
+
 ## Environments
 
 | | |
